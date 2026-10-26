@@ -4,95 +4,232 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bank on a Phone Call</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#f6f5f1; --card:#fff; --ink:#1d1d1b; --mute:#6b6a65; --line:#e4e2da; --acc:#0f6b4f; --warn:#b45309; --bad:#b42318; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#151513; --card:#1e1e1b; --ink:#ecebe6; --mute:#9a9992; --line:#2f2f2b; --acc:#3fbf93; --warn:#f0a43a; --bad:#f07a6e; } }
+  :root {
+    --ink:#101728;
+    --ink2:#19223a;
+    --ink3:#243053;
+    --line-ink:#2b3757;
+    --signal:#3dd68c;
+    --signal-dim:#1f7f55;
+    --paper:#eceee2;
+    --paper2:#e2e5d6;
+    --rule:#cbd1bb;
+    --text:#1a2030;
+    --mute:#6f7563;
+    --stamp:#a8342a;
+    --stamp-amber:#9a6a1b;
+    --sans:"Bricolage Grotesque", system-ui, sans-serif;
+    --mono:"Courier Prime", ui-monospace, monospace;
+  }
   * { box-sizing:border-box }
-  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif }
-  header { padding:18px 20px 6px; max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap }
-  h1 { font-size:20px; margin:0 }
-  main { max-width:1100px; margin:0 auto; padding:10px 20px 40px; display:grid; grid-template-columns:1fr 1fr; gap:16px }
-  @media (max-width:800px) { main { grid-template-columns:1fr } }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px }
-  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--mute); margin:0 0 10px }
-  select, input[type=text] { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink) }
-  button { font:inherit; padding:9px 14px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer }
-  button.main { background:var(--acc); color:#fff; border-color:var(--acc) }
-  button.rec { background:var(--bad); color:#fff; border-color:var(--bad) }
-  button:disabled { opacity:.45; cursor:not-allowed }
-  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px }
-  #log { height:340px; overflow:auto; display:flex; flex-direction:column; gap:8px; padding:4px 0 }
-  .m { max-width:85%; padding:8px 12px; border-radius:12px; border:1px solid var(--line) }
-  .m.agent { align-self:flex-start; background:var(--bg) }
-  .m.caller { align-self:flex-end; background:var(--acc); color:#fff; border-color:var(--acc) }
-  #status { color:var(--mute); font-size:13px; min-height:20px; margin-top:8px }
-  table { width:100%; border-collapse:collapse; font-size:14px }
-  td { padding:5px 0; border-bottom:1px solid var(--line); vertical-align:top }
-  td:first-child { color:var(--mute); width:42% }
-  .badge { display:inline-block; padding:3px 10px; border-radius:99px; font-size:12px; font-weight:600; border:1px solid var(--line) }
-  .badge.ready_for_officer { color:var(--acc); border-color:var(--acc) }
-  .badge.needs_officer_review { color:var(--bad); border-color:var(--bad) }
-  .badge.in_progress { color:var(--warn); border-color:var(--warn) }
-  .flag { color:var(--bad) } .miss { color:var(--warn) }
-  .chip { display:inline-block; font-size:12px; padding:2px 8px; margin:2px 4px 2px 0; border:1px solid var(--line); border-radius:6px }
-  .sec { margin-top:14px }
+  html, body { height:100% }
+  body {
+    margin:0;
+    background:var(--ink);
+    color:var(--paper);
+    font:16px/1.55 var(--sans);
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:1180px; margin:0 auto; padding:0 20px 56px }
+
+  header { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; padding:34px 0 24px }
+  .brand { display:flex; align-items:center; gap:14px }
+  .mark { width:46px; height:46px; flex:none; border-radius:50%; border:1.5px solid var(--signal-dim); display:grid; place-items:center; position:relative }
+  .mark:after { content:""; width:9px; height:9px; border-radius:50%; background:var(--signal) }
+  .mark span { position:absolute; inset:-7px; border-radius:50%; border:1.5px solid var(--signal); opacity:.28 }
+  h1 { font-size:clamp(26px, 4vw, 40px); font-weight:800; letter-spacing:-.025em; line-height:1.05; margin:0 }
+  .tag { margin:4px 0 0; color:#8d97b0; font-size:15px; max-width:46ch }
+
+  .picker { display:flex; align-items:center; gap:10px; font-size:14px; color:#8d97b0 }
+  select {
+    font:600 15px/1 var(--sans); color:var(--paper); background:var(--ink2);
+    border:1px solid var(--line-ink); border-radius:999px; padding:11px 16px; cursor:pointer;
+  }
+  select:disabled { opacity:.5; cursor:not-allowed }
+
+  main { display:grid; grid-template-columns:1.05fr .95fr; gap:22px; align-items:start }
+  @media (max-width:880px) { main { grid-template-columns:1fr } }
+
+  /* ---- call side ---- */
+  .call { background:var(--ink2); border:1px solid var(--line-ink); border-radius:18px; padding:20px; display:flex; flex-direction:column; min-height:560px }
+  .callbar { display:flex; align-items:center; gap:10px; padding-bottom:16px; border-bottom:1px solid var(--line-ink) }
+  .dot { width:8px; height:8px; border-radius:50%; background:#53607f; flex:none }
+  .live .dot { background:var(--signal); box-shadow:0 0 0 0 rgba(61,214,140,.55); animation:ping 2s ease-out infinite }
+  @keyframes ping { 70%,100% { box-shadow:0 0 0 9px rgba(61,214,140,0) } }
+  .callstate { font-size:14px; color:#8d97b0 }
+  .live .callstate { color:var(--signal) }
+  .timer { margin-left:auto; font:400 14px/1 var(--mono); color:#8d97b0; letter-spacing:.04em }
+
+  #log { flex:1; overflow:auto; display:flex; flex-direction:column; gap:12px; padding:18px 2px; min-height:280px }
+  .empty { margin:auto; text-align:center; color:#5d688a; font-size:15px; max-width:28ch }
+  .m { max-width:84%; padding:11px 15px; border-radius:16px; font-size:15.5px; white-space:pre-wrap }
+  .m.agent { align-self:flex-start; background:var(--ink3); border-bottom-left-radius:5px }
+  .m.caller { align-self:flex-end; background:var(--signal-dim); color:#eafff4; border-bottom-right-radius:5px }
+
+  .bars { display:flex; align-items:flex-end; gap:3px; height:16px; margin:2px 0 0 4px }
+  .bars i { width:3px; background:var(--signal); border-radius:2px; animation:bob .9s ease-in-out infinite }
+  .bars i:nth-child(2) { animation-delay:.12s } .bars i:nth-child(3) { animation-delay:.24s }
+  .bars i:nth-child(4) { animation-delay:.36s } .bars i:nth-child(5) { animation-delay:.48s }
+  @keyframes bob { 0%,100% { height:4px } 50% { height:16px } }
+
+  #status { min-height:22px; font-size:14px; color:#8d97b0; padding:2px 2px 10px }
+  #status.bad { color:#ff9c8f }
+
+  .controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center }
+  button { font:600 15px/1 var(--sans); cursor:pointer; border-radius:999px; border:1px solid var(--line-ink); background:var(--ink3); color:var(--paper); padding:13px 20px }
+  button:hover:not(:disabled) { border-color:#44527d }
+  button.go { background:var(--signal); color:#06301d; border-color:var(--signal); padding-left:26px; padding-right:26px }
+  button.rec { background:var(--stamp); border-color:var(--stamp); color:#fff }
+  button:disabled { opacity:.38; cursor:not-allowed }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline:2px solid var(--signal); outline-offset:2px }
+  .typerow { display:flex; gap:10px; margin-top:10px }
+  input[type=text] { flex:1; font:400 15px/1 var(--sans); background:var(--ink); color:var(--paper); border:1px solid var(--line-ink); border-radius:999px; padding:13px 18px }
+  input[type=text]::placeholder { color:#5d688a }
+
+  /* ---- file side ---- */
+  .file { background:var(--paper); color:var(--text); border-radius:18px; padding:26px 26px 30px; position:relative; overflow:hidden }
+  .filehead { position:relative; padding-bottom:16px }
+  .filehead h2 { font-size:19px; font-weight:800; letter-spacing:-.01em; margin:0 }
+  .filehead p { margin:3px 0 0; font-size:13.5px; color:var(--mute) }
+  .meter { height:3px; background:var(--rule); border-radius:2px; overflow:hidden }
+  .meter i { display:block; height:100%; width:0; background:var(--signal-dim); transition:width .5s ease }
+  .count { margin:7px 0 0; font:400 13px/1 var(--mono); color:var(--mute) }
+  .stamp { position:absolute; top:-4px; right:-2px; transform:rotate(-5deg); font:700 12px/1.1 var(--mono); letter-spacing:.1em; text-transform:uppercase;
+           padding:7px 11px; border:2.5px solid currentColor; border-radius:3px; color:var(--stamp-amber); opacity:.9 }
+  .stamp.ready_for_officer { color:var(--signal-dim) }
+  .stamp.needs_officer_review { color:var(--stamp) }
+  .stamp.in_progress { color:var(--stamp-amber) }
+
+  .block { margin-top:22px }
+  .block h3 { font-size:13.5px; font-weight:600; color:var(--mute); margin:0 0 6px }
+  table { width:100%; border-collapse:collapse }
+  td { padding:7px 0 6px; vertical-align:baseline; font-size:15px; line-height:21px; border-bottom:1px solid var(--rule) }
+  td:first-child { width:44%; color:var(--mute) }
+  td:last-child { font-family:var(--mono); font-weight:700 }
+  td.blank { color:#a9ae9a; font-family:var(--mono); font-weight:400 }
+  tr.fresh td { animation:fill 1.6s ease-out }
+  @keyframes fill { 0% { background:rgba(61,214,140,.4) } 100% { background:transparent } }
+  .none { color:var(--mute); font-style:italic }
+  .chip { display:inline-block; font:700 12.5px/1 var(--mono); padding:5px 9px; margin:0 6px 6px 0; border:1px solid var(--text); border-radius:3px }
+  .flag { display:flex; gap:8px; color:var(--stamp); font-size:14.5px; line-height:21px; padding:2px 0 }
+  .flag:before { content:"!"; font-family:var(--mono); font-weight:700; flex:none }
+  .miss { font-family:var(--mono); font-size:14px; color:var(--stamp-amber); line-height:21px }
+
+  footer { margin-top:20px; display:flex; gap:8px 22px; flex-wrap:wrap; font:400 12.5px/1.6 var(--mono); color:#99a3bd }
+  footer b { color:#5d688a; font-weight:400 }
+
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important } }
 </style>
 </head>
 <body>
+<div class="wrap">
 <header>
-  <h1>Bank on a Phone Call</h1>
-  <label>Language <select id="lang">
-    <option value="hi-IN">Hindi</option>
-    <option value="en-IN">English</option>
-    <option value="bn-IN">Bengali</option>
-    <option value="mr-IN">Marathi</option>
-    <option value="ta-IN">Tamil</option>
-    <option value="te-IN">Telugu</option>
-  </select></label>
-</header>
-<main>
-  <section class="card">
-    <h2>Call</h2>
-    <div id="log"></div>
-    <div id="status"></div>
-    <div class="row">
-      <button id="start" class="main">Start call</button>
-      <button id="mic" disabled>Speak</button>
-      <label><input id="file" type="file" accept="image/*,.pdf" hidden><button id="up" disabled>Upload income proof</button></label>
+  <div class="brand">
+    <div class="mark"><span></span></div>
+    <div>
+      <h1>Bank on a Phone Call</h1>
+      <p class="tag">Loan pre-qualification by voice, in the caller's own language. Every answer traced to a policy clause.</p>
     </div>
-    <div class="row">
-      <input id="txt" type="text" placeholder="or type a message" style="flex:1" disabled>
+  </div>
+  <label class="picker">Language
+    <select id="lang">
+      <option value="hi-IN">हिंदी &nbsp;Hindi</option>
+      <option value="en-IN">English</option>
+      <option value="bn-IN">বাংলা &nbsp;Bengali</option>
+      <option value="mr-IN">मराठी &nbsp;Marathi</option>
+      <option value="ta-IN">தமிழ் &nbsp;Tamil</option>
+      <option value="te-IN">తెలుగు &nbsp;Telugu</option>
+    </select>
+  </label>
+</header>
+
+<main>
+  <section class="call" id="call">
+    <div class="callbar">
+      <i class="dot"></i>
+      <span class="callstate" id="callstate">Not connected</span>
+      <span class="timer" id="timer">00:00</span>
+    </div>
+    <div id="log"><p class="empty">Press Start call. The agent picks up and speaks first.</p></div>
+    <div id="status"></div>
+    <div class="controls">
+      <button id="start" class="go">Start call</button>
+      <button id="mic" disabled>Speak</button>
+      <button id="up" disabled>Send income proof</button>
+      <input id="file" type="file" accept="image/*,.pdf" hidden>
+    </div>
+    <div class="typerow">
+      <input id="txt" type="text" placeholder="or type what the caller says" disabled>
       <button id="send" disabled>Send</button>
     </div>
   </section>
-  <section class="card">
-    <h2>Officer summary</h2>
-    <div id="sum"><span style="color:var(--mute)">Start a call to see the application take shape.</span></div>
+
+  <section class="file">
+    <div class="filehead">
+      <h2>File note</h2>
+      <p>What the loan officer receives</p>
+      <div class="stamp" id="stamp" style="display:none"></div>
+    </div>
+    <div class="meter"><i id="meter"></i></div>
+    <p class="count" id="count">0 of 5 answers</p>
+    <div id="sum"></div>
   </section>
 </main>
+
+<footer>
+  <span><b>Speech in</b> saaras:v4</span>
+  <span><b>Reasoning</b> sarvam-105b</span>
+  <span><b>Speech out</b> bulbul:v4-flash</span>
+  <span><b>Documents</b> Sarvam Vision</span>
+</footer>
+</div>
+
 <script>
 const sid = crypto.randomUUID()
 const $ = id => document.getElementById(id)
 let rec = null
 let chunks = []
 let stopper = null
-let busy = false
+let ticker = null
+let started = 0
+let audio = null
 
 function esc(t) {
   return String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]))
 }
 
-function status(t) { $("status").textContent = t }
+function status(t, bad) {
+  $("status").textContent = t
+  $("status").className = bad ? "bad" : ""
+}
 
 function lock(b) {
-  busy = b
   $("mic").disabled = b
   $("up").disabled = b
   $("send").disabled = b
   $("txt").disabled = b
 }
 
+function clock() {
+  const s = Math.floor((Date.now() - started) / 1000)
+  const m = String(Math.floor(s / 60)).padStart(2, "0")
+  $("timer").textContent = m + ":" + String(s % 60).padStart(2, "0")
+}
+
+function connect() {
+  started = Date.now()
+  $("call").classList.add("live")
+  $("callstate").textContent = "Connected"
+  ticker = setInterval(clock, 1000)
+}
+
 function addmsg(who, text) {
+  const e = $("log").querySelector(".empty")
+  if (e) { e.remove() }
   const d = document.createElement("div")
   d.className = "m " + who
   d.textContent = text
@@ -100,47 +237,88 @@ function addmsg(who, text) {
   $("log").scrollTop = $("log").scrollHeight
 }
 
-function render(s) {
-  let h = '<span class="badge ' + s.status + '">' + esc(s.status.replace(/_/g, " ")) + "</span>"
-  h += '<div class="sec"><table>'
-  const keys = Object.keys(s.fields)
-  if (keys.length == 0) {
-    h += '<tr><td colspan="2" style="color:var(--mute)">nothing collected yet</td></tr>'
+function speaking(on) {
+  const old = $("log").querySelector(".bars")
+  if (old) { old.remove() }
+  if (!on) { return }
+  const d = document.createElement("div")
+  d.className = "bars"
+  d.innerHTML = "<i></i><i></i><i></i><i></i><i></i>"
+  $("log").appendChild(d)
+  $("log").scrollTop = $("log").scrollHeight
+}
+
+const order = ["name", "occupation", "monthly_income", "loan_amount", "purpose", "existing_emi"]
+const money = ["monthly_income", "loan_amount", "existing_emi"]
+let prev = {}
+
+function show(k, v) {
+  if (money.indexOf(k) >= 0 && !isNaN(Number(v))) { return "₹ " + Number(v).toLocaleString("en-IN") }
+  return String(v)
+}
+
+function rows(obj) {
+  let h = "<table>"
+  for (const k of Object.keys(obj || {})) {
+    const v = obj[k]
+    if (v === null || v === "" || v === undefined) { continue }
+    h += "<tr><td>" + esc(k.replace(/_/g, " ")) + "</td><td>" + esc(show(k, v)) + "</td></tr>"
   }
+  return h + "</table>"
+}
+
+function form(f) {
+  const keys = order.concat(Object.keys(f).filter(k => order.indexOf(k) < 0))
+  let h = "<table>"
   for (const k of keys) {
-    h += "<tr><td>" + esc(k.replace(/_/g, " ")) + "</td><td>" + esc(s.fields[k]) + "</td></tr>"
+    const v = f[k]
+    const got = v !== null && v !== "" && v !== undefined
+    const fresh = got && prev[k] !== v
+    h += '<tr class="' + (fresh ? "fresh" : "") + '"><td>' + esc(k.replace(/_/g, " ")) + "</td>"
+    h += got ? "<td>" + esc(show(k, v)) + "</td>" : '<td class="blank">not asked yet</td>'
+    h += "</tr>"
   }
-  h += "</table></div>"
+  prev = Object.assign({}, f)
+  return h + "</table>"
+}
+
+function render(s) {
+  $("stamp").style.display = ""
+  $("stamp").className = "stamp " + s.status
+  $("stamp").textContent = s.status.replace(/_/g, " ")
+  const got = 5 - s.missing.filter(m => m != "income proof").length
+  $("meter").style.width = (got / 5 * 100) + "%"
+  $("count").textContent = got + " of 5 answers"
+  let h = '<div class="block">' + form(s.fields) + "</div>"
   if (s.docs.length > 0) {
-    h += '<div class="sec"><h2>Documents</h2>'
+    h += '<div class="block"><h3>Read from documents</h3>'
     for (const d of s.docs) {
-      h += "<table><tr><td>file</td><td>" + esc(d.name) + "</td></tr>"
-      for (const k of Object.keys(d.fields || {})) {
-        h += "<tr><td>" + esc(k.replace(/_/g, " ")) + "</td><td>" + esc(d.fields[k]) + "</td></tr>"
-      }
-      h += "</table>"
+      h += rows(Object.assign({ file: d.name }, d.fields || {}))
     }
     h += "</div>"
   }
   if (s.cited.length > 0) {
-    h += '<div class="sec"><h2>Policy clauses used</h2>'
+    h += '<div class="block"><h3>Policy clauses relied on</h3>'
     for (const c of s.cited) { h += '<span class="chip">' + esc(c) + "</span>" }
     h += "</div>"
   }
   if (s.flags.length > 0) {
-    h += '<div class="sec"><h2>Flags</h2>'
-    for (const f of s.flags) { h += '<div class="flag">' + esc(f) + "</div>" }
+    h += '<div class="block"><h3>Needs a human</h3>'
+    for (const f of s.flags) { h += '<div class="flag"><span>' + esc(f) + "</span></div>" }
     h += "</div>"
   }
   if (s.missing.length > 0) {
-    h += '<div class="sec"><h2>Still missing</h2><div class="miss">' + esc(s.missing.join(", ").replace(/_/g, " ")) + "</div></div>"
+    h += '<div class="block"><h3>Still missing</h3><div class="miss">' + esc(s.missing.join(", ").replace(/_/g, " ")) + "</div></div>"
   }
   $("sum").innerHTML = h
 }
 
 function play(b64) {
   if (!b64) { return }
-  new Audio("data:audio/wav;base64," + b64).play().catch(() => {})
+  if (audio) { audio.pause() }
+  audio = new Audio("data:audio/wav;base64," + b64)
+  audio.onended = () => speaking(false)
+  audio.play().then(() => speaking(true)).catch(() => speaking(false))
 }
 
 async function post(url, fd) {
@@ -152,7 +330,7 @@ async function post(url, fd) {
 
 async function turn(fd, hidden) {
   lock(true)
-  status("thinking...")
+  status("Agent is thinking")
   try {
     fd.append("sid", sid)
     fd.append("lang", $("lang").value)
@@ -161,9 +339,9 @@ async function turn(fd, hidden) {
     if (j.reply) { addmsg("agent", j.reply) }
     play(j.audio)
     render(j.summary)
-    status(j.heard == "" && !hidden ? "did not catch that, try again" : "")
+    status(j.heard == "" && !hidden ? "Nothing was heard. Speak again, or type it." : "")
   } catch (e) {
-    status("error: " + e.message)
+    status(e.message, true)
   }
   lock(false)
 }
@@ -203,7 +381,7 @@ async function togglemic() {
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true })
   } catch (e) {
-    status("mic blocked, allow microphone access or type instead")
+    status("The microphone is blocked. Allow it in the browser, or type instead.", true)
     return
   }
   chunks = []
@@ -220,24 +398,25 @@ async function togglemic() {
       fd.append("audio", await towav(new Blob(chunks)), "audio.wav")
       await turn(fd, false)
     } catch (e) {
-      status("could not read the recording: " + e.message)
+      status("That recording could not be read. Try again.", true)
     }
   }
   rec.start()
   $("mic").textContent = "Stop"
   $("mic").classList.add("rec")
-  status("listening, max 25 seconds")
+  status("Listening, up to 25 seconds")
   stopper = setTimeout(() => { if (rec) { rec.stop() } }, 25000)
 }
+
+$("sum").innerHTML = '<div class="block">' + form({}) + "</div>"
 
 $("start").onclick = async () => {
   $("start").disabled = true
   $("lang").disabled = true
+  $("callstate").textContent = "Connecting"
   await sendtext("(call connected)", true)
-  $("mic").disabled = false
-  $("up").disabled = false
-  $("send").disabled = false
-  $("txt").disabled = false
+  connect()
+  lock(false)
 }
 $("mic").onclick = togglemic
 $("send").onclick = () => {
@@ -252,7 +431,7 @@ $("file").onchange = async () => {
   const f = $("file").files[0]
   if (!f) { return }
   lock(true)
-  status("reading document...")
+  status("Reading the document")
   try {
     const fd = new FormData()
     fd.append("sid", sid)
@@ -263,7 +442,7 @@ $("file").onchange = async () => {
     lock(false)
     await sendtext("(the caller uploaded a document, its data is now in the verified document data)", true)
   } catch (e) {
-    status("error: " + e.message)
+    status(e.message, true)
     lock(false)
   }
   $("file").value = ""
