@@ -16,7 +16,7 @@ if key == "":
 
 client = SarvamAI(api_subscription_key=key)
 app = FastAPI()
-chat_model = "sarvam-105b-conversations"
+chat_model = "sarvam-105b"
 policy = open("policy.md", encoding="utf-8").read()
 sessions = {}
 need = ["name", "occupation", "monthly_income", "loan_amount", "purpose"]
@@ -28,6 +28,39 @@ langs = {
     "mr-IN": ["Marathi", "nilesh_mr_conversation"],
     "ta-IN": ["Tamil", "gokul_ta_narration"],
     "te-IN": ["Telugu", "kavitha_te_conversation"],
+}
+
+turn_fields = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "occupation": {"type": "string"},
+        "monthly_income": {"type": "number"},
+        "loan_amount": {"type": "number"},
+        "purpose": {"type": "string"},
+        "existing_emi": {"type": "number"},
+    },
+    "required": ["name", "occupation", "monthly_income", "loan_amount", "purpose", "existing_emi"],
+    "additionalProperties": False,
+}
+
+turn_format = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "turn",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "reply": {"type": "string"},
+                "cited": {"type": "array", "items": {"type": "string"}},
+                "fields": turn_fields,
+                "escalate": {"type": "boolean"},
+            },
+            "required": ["reply", "cited", "fields", "escalate"],
+            "additionalProperties": False,
+        },
+    },
 }
 
 doc_schema = {
@@ -61,11 +94,12 @@ def num(x):
 def prompt(s, lang):
     p = "You are a phone-based loan pre-qualification agent for a bank in India. The caller may be on a basic phone, so keep every reply to 1 to 3 short spoken sentences in plain words, no lists, no markdown.\n"
     p += "Reply in " + langs[lang][0] + ", written in that language's own script. Common English words are fine.\n"
-    p += "Find out the caller's name, occupation (shop or business owner, gig or platform worker, other), monthly income, loan amount needed, purpose, and any existing EMIs. Ask one question at a time.\n"
+    p += "Find out the caller's name, occupation (shop or business owner, gig or platform worker, other), monthly income, loan amount needed, purpose, and any existing EMIs. Ask one question at a time. If the caller asks a question, answer it first from the policy, then ask your next question.\n"
     p += "Answer questions about loan products only from the POLICY below. If the policy does not cover something, say you will connect the caller to a loan officer and set escalate to true. Never guess figures. Never approve or reject a loan and never promise approval, the final decision is the loan officer's.\n"
+    p += "Never state a rule, limit, fee, condition or exception that is not written in the POLICY, even if it sounds reasonable. If the caller asks about anything the policy does not say, such as fee waivers, special cases, what the loan may be used for, rate negotiation or timelines, say you cannot confirm that and a loan officer will follow up, and set escalate to true.\n"
     p += "When you know enough, say which product fits and what it needs, based only on the policy, then ask the caller to send income proof as a photo through a smartphone.\n"
     p += "If the caller's message is (call connected), greet them briefly as the bank's loan assistant and ask how you can help. If a message starts with ( it is a system note, not something the caller said.\n"
-    p += 'Output ONLY one JSON object and nothing else: {"reply": "what you say aloud", "cited": ["policy clause ids you relied on, like UM-3"], "fields": {"name": "", "occupation": "", "monthly_income": 0, "loan_amount": 0, "purpose": "", "existing_emi": 0}, "escalate": false}. In fields include only values the caller gave or changed this turn, amounts as plain numbers in INR. The spoken reply must not contain clause ids.\n\n'
+    p += 'Your output is a JSON object with: reply (what you say aloud), cited (policy clause ids you relied on, like UM-3), fields, escalate. In fields put only what the caller gave or changed in this turn, amounts as plain numbers in INR (1 lakh is 100000), and use an empty string or 0 for anything not mentioned this turn. The spoken reply must not contain clause ids.\n\n'
     p += "POLICY:\n" + policy
     if len(s["docs"]) > 0:
         p += "\n\nVERIFIED DOCUMENT DATA (read from documents the caller uploaded). Use it to confirm what the caller said, and mention gently if a figure differs:\n"
@@ -150,7 +184,7 @@ def turn(sid: str = Form(...), lang: str = Form("hi-IN"), text: str = Form(""), 
         s["hist"].append({"role": "user", "content": heard})
         s["log"].append({"who": "caller", "text": heard})
         msgs = [{"role": "system", "content": prompt(s, lang)}] + s["hist"][-20:]
-        r = client.chat.completions(model=chat_model, messages=msgs, reasoning_effort=None, temperature=0.3, max_tokens=800)
+        r = client.chat.completions(model=chat_model, messages=msgs, reasoning_effort=None, temperature=0.3, max_tokens=800, response_format=turn_format)
         raw = r.choices[0].message.content or ""
         d = parse(raw)
         s["hist"].append({"role": "assistant", "content": raw})

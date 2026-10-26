@@ -9,7 +9,7 @@ A caller speaks in their language. The agent collects basic details, answers pro
 | Step | Sarvam API | Model |
 |------|------------|-------|
 | Caller speech to text | Speech-to-Text | saaras:v4 |
-| Reasoning, policy answers, field extraction | Chat Completion | sarvam-105b-conversations |
+| Reasoning, policy answers, field extraction (enforced JSON output) | Chat Completion | sarvam-105b |
 | Agent speech | Text-to-Speech | bulbul:v4-flash |
 | Income proof photo to fields | Document AI (Extract) | Sarvam Vision |
 
