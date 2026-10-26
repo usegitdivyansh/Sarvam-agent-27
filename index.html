@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bank on a Phone Call</title>
+<style>
+  :root { --bg:#f6f5f1; --card:#fff; --ink:#1d1d1b; --mute:#6b6a65; --line:#e4e2da; --acc:#0f6b4f; --warn:#b45309; --bad:#b42318; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#151513; --card:#1e1e1b; --ink:#ecebe6; --mute:#9a9992; --line:#2f2f2b; --acc:#3fbf93; --warn:#f0a43a; --bad:#f07a6e; } }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif }
+  header { padding:18px 20px 6px; max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap }
+  h1 { font-size:20px; margin:0 }
+  main { max-width:1100px; margin:0 auto; padding:10px 20px 40px; display:grid; grid-template-columns:1fr 1fr; gap:16px }
+  @media (max-width:800px) { main { grid-template-columns:1fr } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--mute); margin:0 0 10px }
+  select, input[type=text] { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink) }
+  button { font:inherit; padding:9px 14px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer }
+  button.main { background:var(--acc); color:#fff; border-color:var(--acc) }
+  button.rec { background:var(--bad); color:#fff; border-color:var(--bad) }
+  button:disabled { opacity:.45; cursor:not-allowed }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px }
+  #log { height:340px; overflow:auto; display:flex; flex-direction:column; gap:8px; padding:4px 0 }
+  .m { max-width:85%; padding:8px 12px; border-radius:12px; border:1px solid var(--line) }
+  .m.agent { align-self:flex-start; background:var(--bg) }
+  .m.caller { align-self:flex-end; background:var(--acc); color:#fff; border-color:var(--acc) }
+  #status { color:var(--mute); font-size:13px; min-height:20px; margin-top:8px }
+  table { width:100%; border-collapse:collapse; font-size:14px }
+  td { padding:5px 0; border-bottom:1px solid var(--line); vertical-align:top }
+  td:first-child { color:var(--mute); width:42% }
+  .badge { display:inline-block; padding:3px 10px; border-radius:99px; font-size:12px; font-weight:600; border:1px solid var(--line) }
+  .badge.ready_for_officer { color:var(--acc); border-color:var(--acc) }
+  .badge.needs_officer_review { color:var(--bad); border-color:var(--bad) }
+  .badge.in_progress { color:var(--warn); border-color:var(--warn) }
+  .flag { color:var(--bad) } .miss { color:var(--warn) }
+  .chip { display:inline-block; font-size:12px; padding:2px 8px; margin:2px 4px 2px 0; border:1px solid var(--line); border-radius:6px }
+  .sec { margin-top:14px }
+</style>
+</head>
+<body>
+<header>
+  <h1>Bank on a Phone Call</h1>
+  <label>Language <select id="lang">
+    <option value="hi-IN">Hindi</option>
+    <option value="en-IN">English</option>
+    <option value="bn-IN">Bengali</option>
+    <option value="mr-IN">Marathi</option>
+    <option value="ta-IN">Tamil</option>
+    <option value="te-IN">Telugu</option>
+  </select></label>
+</header>
+<main>
+  <section class="card">
+    <h2>Call</h2>
+    <div id="log"></div>
+    <div id="status"></div>
+    <div class="row">
+      <button id="start" class="main">Start call</button>
+      <button id="mic" disabled>Speak</button>
+      <label><input id="file" type="file" accept="image/*,.pdf" hidden><button id="up" disabled>Upload income proof</button></label>
+    </div>
+    <div class="row">
+      <input id="txt" type="text" placeholder="or type a message" style="flex:1" disabled>
+      <button id="send" disabled>Send</button>
+    </div>
+  </section>
+  <section class="card">
+    <h2>Officer summary</h2>
+    <div id="sum"><span style="color:var(--mute)">Start a call to see the application take shape.</span></div>
+  </section>
+</main>
+<script>
+const sid = crypto.randomUUID()
+const $ = id => document.getElementById(id)
+let rec = null
+let chunks = []
+let stopper = null
+let busy = false
+
+function esc(t) {
+  return String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]))
+}
+
+function status(t) { $("status").textContent = t }
+
+function lock(b) {
+  busy = b
+  $("mic").disabled = b
+  $("up").disabled = b
+  $("send").disabled = b
+  $("txt").disabled = b
+}
+
+function addmsg(who, text) {
+  const d = document.createElement("div")
+  d.className = "m " + who
+  d.textContent = text
+  $("log").appendChild(d)
+  $("log").scrollTop = $("log").scrollHeight
+}
+
+function render(s) {
+  let h = '<span class="badge ' + s.status + '">' + esc(s.status.replace(/_/g, " ")) + "</span>"
+  h += '<div class="sec"><table>'
+  const keys = Object.keys(s.fields)
+  if (keys.length == 0) {
+    h += '<tr><td colspan="2" style="color:var(--mute)">nothing collected yet</td></tr>'
+  }
+  for (const k of keys) {
+    h += "<tr><td>" + esc(k.replace(/_/g, " ")) + "</td><td>" + esc(s.fields[k]) + "</td></tr>"
+  }
+  h += "</table></div>"
+  if (s.docs.length > 0) {
+    h += '<div class="sec"><h2>Documents</h2>'
+    for (const d of s.docs) {
+      h += "<table><tr><td>file</td><td>" + esc(d.name) + "</td></tr>"
+      for (const k of Object.keys(d.fields || {})) {
+        h += "<tr><td>" + esc(k.replace(/_/g, " ")) + "</td><td>" + esc(d.fields[k]) + "</td></tr>"
+      }
+      h += "</table>"
+    }
+    h += "</div>"
+  }
+  if (s.cited.length > 0) {
+    h += '<div class="sec"><h2>Policy clauses used</h2>'
+    for (const c of s.cited) { h += '<span class="chip">' + esc(c) + "</span>" }
+    h += "</div>"
+  }
+  if (s.flags.length > 0) {
+    h += '<div class="sec"><h2>Flags</h2>'
+    for (const f of s.flags) { h += '<div class="flag">' + esc(f) + "</div>" }
+    h += "</div>"
+  }
+  if (s.missing.length > 0) {
+    h += '<div class="sec"><h2>Still missing</h2><div class="miss">' + esc(s.missing.join(", ").replace(/_/g, " ")) + "</div></div>"
+  }
+  $("sum").innerHTML = h
+}
+
+function play(b64) {
+  if (!b64) { return }
+  new Audio("data:audio/wav;base64," + b64).play().catch(() => {})
+}
+
+async function post(url, fd) {
+  const r = await fetch(url, { method: "POST", body: fd })
+  const j = await r.json()
+  if (!r.ok) { throw new Error(j.error || "request failed") }
+  return j
+}
+
+async function turn(fd, hidden) {
+  lock(true)
+  status("thinking...")
+  try {
+    fd.append("sid", sid)
+    fd.append("lang", $("lang").value)
+    const j = await post("/api/turn", fd)
+    if (j.heard && !hidden) { addmsg("caller", j.heard) }
+    if (j.reply) { addmsg("agent", j.reply) }
+    play(j.audio)
+    render(j.summary)
+    status(j.heard == "" && !hidden ? "did not catch that, try again" : "")
+  } catch (e) {
+    status("error: " + e.message)
+  }
+  lock(false)
+}
+
+function sendtext(t, hidden) {
+  const fd = new FormData()
+  fd.append("text", t)
+  return turn(fd, hidden)
+}
+
+async function towav(blob) {
+  const ac = new (window.AudioContext || window.webkitAudioContext)()
+  const dec = await ac.decodeAudioData(await blob.arrayBuffer())
+  ac.close()
+  const oc = new OfflineAudioContext(1, Math.ceil(dec.duration * 16000), 16000)
+  const src = oc.createBufferSource()
+  src.buffer = dec
+  src.connect(oc.destination)
+  src.start()
+  const x = (await oc.startRendering()).getChannelData(0)
+  const v = new DataView(new ArrayBuffer(44 + x.length * 2))
+  const ws = (o, s) => { for (let i = 0; i < s.length; i++) { v.setUint8(o + i, s.charCodeAt(i)) } }
+  ws(0, "RIFF"); v.setUint32(4, 36 + x.length * 2, true); ws(8, "WAVE"); ws(12, "fmt ")
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true)
+  v.setUint32(24, 16000, true); v.setUint32(28, 32000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true)
+  ws(36, "data"); v.setUint32(40, x.length * 2, true)
+  for (let i = 0; i < x.length; i++) {
+    const s = Math.max(-1, Math.min(1, x[i]))
+    if (s < 0) { v.setInt16(44 + i * 2, s * 0x8000, true) } else { v.setInt16(44 + i * 2, s * 0x7fff, true) }
+  }
+  return new Blob([v], { type: "audio/wav" })
+}
+
+async function togglemic() {
+  if (rec) { rec.stop(); return }
+  let stream
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+  } catch (e) {
+    status("mic blocked, allow microphone access or type instead")
+    return
+  }
+  chunks = []
+  rec = new MediaRecorder(stream)
+  rec.ondataavailable = e => chunks.push(e.data)
+  rec.onstop = async () => {
+    clearTimeout(stopper)
+    stream.getTracks().forEach(t => t.stop())
+    rec = null
+    $("mic").textContent = "Speak"
+    $("mic").classList.remove("rec")
+    try {
+      const fd = new FormData()
+      fd.append("audio", await towav(new Blob(chunks)), "audio.wav")
+      await turn(fd, false)
+    } catch (e) {
+      status("could not read the recording: " + e.message)
+    }
+  }
+  rec.start()
+  $("mic").textContent = "Stop"
+  $("mic").classList.add("rec")
+  status("listening, max 25 seconds")
+  stopper = setTimeout(() => { if (rec) { rec.stop() } }, 25000)
+}
+
+$("start").onclick = async () => {
+  $("start").disabled = true
+  $("lang").disabled = true
+  await sendtext("(call connected)", true)
+  $("mic").disabled = false
+  $("up").disabled = false
+  $("send").disabled = false
+  $("txt").disabled = false
+}
+$("mic").onclick = togglemic
+$("send").onclick = () => {
+  const t = $("txt").value.trim()
+  if (t == "") { return }
+  $("txt").value = ""
+  sendtext(t, false)
+}
+$("txt").onkeydown = e => { if (e.key == "Enter") { $("send").click() } }
+$("up").onclick = () => $("file").click()
+$("file").onchange = async () => {
+  const f = $("file").files[0]
+  if (!f) { return }
+  lock(true)
+  status("reading document...")
+  try {
+    const fd = new FormData()
+    fd.append("sid", sid)
+    fd.append("file", f)
+    const j = await post("/api/doc", fd)
+    render(j.summary)
+    status("")
+    lock(false)
+    await sendtext("(the caller uploaded a document, its data is now in the verified document data)", true)
+  } catch (e) {
+    status("error: " + e.message)
+    lock(false)
+  }
+  $("file").value = ""
+}
+</script>
+</body>
+</html>
